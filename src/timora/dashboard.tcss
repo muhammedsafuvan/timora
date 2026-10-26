@@ -1,0 +1,101 @@
+Screen {
+    background: #101414;
+    color: #d7dcd9;
+}
+
+#root {
+    padding: 1 4;
+    align: center top;
+}
+
+#content {
+    width: 100%;
+    max-width: 72;
+}
+
+#header {
+    height: auto;
+    margin-bottom: 1;
+}
+
+#title {
+    color: #cfd6d2;
+    text-style: bold;
+    width: 1fr;
+}
+
+#status {
+    color: #86C99A;
+    text-style: bold;
+    width: 1fr;
+    text-align: right;
+}
+
+#clock-block {
+    align: center middle;
+    margin: 1 0 2 0;
+}
+
+#clock {
+    color: #f1f4f2;
+    text-style: bold;
+    text-align: center;
+}
+
+#date, #timezone {
+    color: #aab3af;
+    text-align: center;
+}
+
+.section-title {
+    color: #9aa8a3;
+    text-style: bold;
+}
+
+.section-value {
+    color: #dbe1de;
+}
+
+#panels {
+    align: center middle;
+    margin: 0 0 1 0;
+}
+
+.panel {
+    padding: 0 2;
+    width: 1fr;
+}
+
+#progress-block {
+    margin: 0 0 1 0;
+}
+
+#progress-meta {
+    width: 100%;
+    margin-bottom: 1;
+}
+
+#progress-remaining {
+    color: #c7cecb;
+    width: 1fr;
+}
+
+#progress-percent {
+    color: #c7cecb;
+    width: 1fr;
+    text-align: right;
+}
+
+#progress {
+    color: #86C99A;
+    background: #1b2222;
+}
+
+#announcements-block {
+    margin-top: 1;
+}
+
+#announcements {
+    color: #c9d2ce;
+}
+

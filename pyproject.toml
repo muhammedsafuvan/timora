@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "timora"
+version = "0.1.1"
+description = "Lightweight CLI voice time reminders."
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+authors = [
+    {name = "Timora Contributors"}
+]
+keywords = ["cli", "reminder", "time", "voice"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "License :: OSI Approved :: MIT License",
+    "Environment :: Console",
+    "Operating System :: MacOS :: MacOS X"
+]
+dependencies = [
+    "textual>=0.50"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0"
+]
+
+[project.scripts]
+timora = "timora.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+packages = ["timora"]
+license-files = ["LICENSE"]
+
+[tool.setuptools.package-data]
+timora = ["*.tcss"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
