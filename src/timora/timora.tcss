@@ -1,6 +1,6 @@
 Screen {
-	background: #0b100e;
-	color: #eef5f1;
+	background: $background;
+	color: $text;
 }
 
 #root {
@@ -20,22 +20,22 @@ Screen {
 }
 
 #title {
-	color: #eef5f1;
+	color: $text;
 	text-style: bold;
 	width: 1fr;
 }
 
 #status {
-	color: #8fe3c4;
-	border: round #8fe3c4;
+	color: $accent;
+	border: round $accent;
 	padding: 0 2;
 	text-style: bold;
 	width: auto;
 }
 
 #status.paused {
-	color: #7f8f87;
-	border: round #7f8f87;
+	color: $muted;
+	border: round $muted;
 }
 
 #clock-block {
@@ -45,7 +45,7 @@ Screen {
 
 #clock {
 	text-align: center;
-	color: #ffffff;
+	color: $text;
 	text-style: bold;
 }
 
@@ -55,12 +55,12 @@ Screen {
 }
 
 #date {
-	color: #a9b8b0;
+	color: $accent;
 	text-align: center;
 }
 
 #timezone {
-	color: #7f8f87;
+	color: $muted;
 	text-align: center;
 }
 
@@ -71,7 +71,7 @@ Screen {
 
 .panel {
 	width: 1fr;
-	border: round #22302a;
+	border: round $surface_border;
 	padding: 1 2;
 	margin-right: 2;
 }
@@ -81,17 +81,17 @@ Screen {
 }
 
 .section-title {
-	color: #7f8f87;
+	color: $muted;
 }
 
 .card-value {
-	color: #eef5f1;
+	color: $text;
 	text-style: bold;
 	margin: 1 0;
 }
 
 .card-subtitle {
-	color: #a9b8b0;
+	color: $secondary;
 }
 
 #progress-block {
@@ -103,12 +103,20 @@ Screen {
 }
 
 #progress-remaining {
-	color: #dfe9e3;
+	color: $muted;
 	width: 1fr;
 }
 
+#next-time {
+	color: $text;
+}
+
+#countdown {
+	color: $accent;
+}
+
 #progress-percent {
-	color: #ffffff;
+	color: $text;
 	text-style: bold;
 	width: 1fr;
 	text-align: right;
@@ -122,22 +130,23 @@ Screen {
 
 #announcements-block {
 	width: 100%;
-	border-top: solid #22302a;
+	border-top: solid $surface_border;
 	margin-bottom: 1;
 }
 
 #announcements-title {
-	color: #7f8f87;
+	color: $muted;
 }
 
 #announcements {
-	color: #a9b8b0;
+	color: $accent;
 }
 
 #footer {
 	dock: bottom;
 	width: 100%;
 	text-align: center;
-	color: #7f8f87;
+	color: $muted;
 	padding: 0 2;
 }
+
