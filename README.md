@@ -2,6 +2,9 @@
 
 Timora is a lightweight CLI time reminder with optional voice announcements and a minimal dashboard UI.
 
+<img width="1504" height="921" alt="image" src="https://github.com/user-attachments/assets/9656f12e-0b49-4bc5-8dbf-2b81929b4b03" />
+
+
 ## Requirements
 
 - Python 3.9 or newer
