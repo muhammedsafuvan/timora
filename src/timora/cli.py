@@ -6,100 +6,84 @@ import argparse
 import sys
 from typing import TextIO
 
-from timora.interval import format_interval, parse_interval
+from timora.config import ThemeConfig, load_theme_config, save_theme_config
+from timora.dashboard import run_dashboard
+from timora.interval import parse_interval
 from timora.notifier import VoiceNotifier
-from timora.scheduler import clock_loop, interval_loop
+from timora.scheduler import run_schedule
+from timora.theme import preset_names, resolve_theme
+
 
 DEFAULT_INTERVAL_SECONDS = 3600
 DEFAULT_MODE = "interval"
-SUPPORTED_MODES = ("interval", "clock")
 
 
-def _interval_arg(value: str) -> int:
-    try:
-        return parse_interval(value)
-    except ValueError as exc:
-        raise argparse.ArgumentTypeError(str(exc)) from exc
+class TimoraArgumentParser(argparse.ArgumentParser):
+	def parse_args(self, args: list[str] | None = None, namespace: argparse.Namespace | None = None) -> argparse.Namespace:
+		parsed = super().parse_args(args, namespace)
+		if parsed.interval is None:
+			parsed.interval_seconds = DEFAULT_INTERVAL_SECONDS
+		else:
+			try:
+				parsed.interval_seconds = parse_interval(parsed.interval)
+			except ValueError as exc:
+				self.error(str(exc))
+		return parsed
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        prog="timora",
-        description="Voice time reminders at a configurable interval.",
-    )
-    parser.add_argument(
-        "-time",
-        "--time",
-        dest="interval_seconds",
-        type=_interval_arg,
-        default=DEFAULT_INTERVAL_SECONDS,
-        metavar="INTERVAL",
-        help=(
-            "Reminder interval like 30s, 15m, 1h, or a plain positive integer "
-            "for minutes. Default: 1h."
-        ),
-    )
-    parser.add_argument(
-        "--mode",
-        dest="mode",
-        choices=SUPPORTED_MODES,
-        default=DEFAULT_MODE,
-        help="Scheduling mode: interval or clock. Default: interval.",
-    )
-    parser.add_argument(
-        "--no-ui",
-        action="store_true",
-        help="Disable the dashboard UI and use plain text output.",
-    )
-    return parser
+	parser = TimoraArgumentParser(prog="timora", description="Timora time reminders")
+	parser.add_argument("--time", "-time", dest="interval", help="Interval (e.g. 30m, 45s, 2h)")
+	parser.add_argument("--mode", choices=["interval", "clock"], default=DEFAULT_MODE)
+	parser.add_argument("--no-ui", action="store_true", help="Disable the dashboard UI")
+	parser.add_argument("--theme", choices=preset_names(), help="Theme preset name")
+	return parser
 
 
-def _should_use_ui(no_ui: bool, stdout: TextIO | None) -> bool:
-    if no_ui:
-        return False
-    stream = stdout if stdout is not None else sys.stdout
-    return stream.isatty() and sys.stdin.isatty()
+def _should_use_ui(no_ui: bool, stdout: TextIO) -> bool:
+	if no_ui:
+		return False
+	if not stdout.isatty():
+		return False
+	return sys.stdin.isatty()
 
 
-def main(stdout: TextIO | None = None) -> int:
-    parser = build_parser()
-    args = parser.parse_args()
+def main(argv: list[str] | None = None) -> int:
+	parser = build_parser()
+	args = parser.parse_args(argv)
+	notifier = VoiceNotifier()
 
-    interval_seconds = args.interval_seconds
-    interval_label = format_interval(interval_seconds)
-    mode = args.mode
-    notifier = VoiceNotifier()
-    no_ui = args.no_ui
+	_, notice = load_theme_config()
+	preset = args.theme
 
-    stream = stdout.write if stdout else print
+	try:
+		selection = resolve_theme(preset_name=preset, primary_hex=None, secondary_hex=None)
+	except ValueError:
+		notice = "Theme config is invalid; using the default theme."
+		selection = resolve_theme(preset_name=None, primary_hex=None, secondary_hex=None)
 
-    if _should_use_ui(no_ui, stdout):
-        try:
-            from timora.dashboard import run_dashboard
+	if args.theme:
+		save_theme_config(ThemeConfig(preset=selection.name))
 
-            return run_dashboard(interval_seconds=interval_seconds, mode=mode, notifier=notifier)
-        except Exception as exc:
-            stream(f"Dashboard unavailable ({exc}); using text output.\n")
+	if _should_use_ui(args.no_ui, sys.stdout):
+		return run_dashboard(
+			interval_seconds=args.interval_seconds,
+			mode=args.mode,
+			notifier=notifier,
+			theme_selection=selection,
+			config_notice=notice,
+		)
 
-    stream("Timora is running.\n")
-    stream(f"Reminder interval: {interval_label}.\n")
-    stream(f"Scheduling mode: {mode}.\n")
-    stream("Press Ctrl+C to stop.\n\n")
+	if notice:
+		print(notice, file=sys.stderr)
 
-    if not notifier.is_available():
-        stream("Voice announcements are unavailable; using text only.\n\n")
-
-    try:
-        if mode == "clock":
-            clock_loop(interval_seconds, notifier, out=print)
-        else:
-            interval_loop(interval_seconds, notifier, out=print)
-    except KeyboardInterrupt:
-        stream("Timora stopped.\n")
-        return 0
-
-    return 0
+	run_schedule(
+		mode=args.mode,
+		interval_seconds=args.interval_seconds,
+		notifier=notifier,
+	)
+	return 0
 
 
-if __name__ == "__main__":
-    raise SystemExit(main())
+if __name__ == "__main__":  # pragma: no cover
+	raise SystemExit(main())

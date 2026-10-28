@@ -1,6 +1,6 @@
 # Timora
 
-Timora is a lightweight Python CLI tool that reminds you of the current time with voice announcements at a configurable interval.
+Timora is a lightweight CLI time reminder with optional voice announcements and a minimal dashboard UI.
 
 ## Requirements
 
@@ -49,6 +49,19 @@ Disable the dashboard UI:
 timora --no-ui
 ```
 
+Choose a theme preset (default is `mint`):
+
+```bash
+timora --theme violet
+```
+
+### Arguments
+
+- `--time`, `-time`: Interval (examples: `30m`, `45s`, `2h`).
+- `--mode`: Scheduling mode: `interval` or `clock`.
+- `--theme`: Theme preset name. Available: `mint`, `red`, `green`, `blue`, `amber`, `violet`, `rose`, `slate`.
+- `--no-ui`: Disable the Textual dashboard UI.
+
 ### Interval formats
 
 - `30s` for seconds
@@ -88,33 +101,3 @@ If standard output is redirected or the terminal is non-interactive, Timora auto
 ## Voice support
 
 Timora uses macOS `say` for offline speech. On non-macOS platforms, Timora falls back to text-only announcements and prints a notice that speech is unavailable.
-
-## Development
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
-python -m pip install -e ".[dev]"
-pytest
-```
-
-## Publishing
-
-Before the first production release, confirm the `timora` name is available on PyPI. If it is not available, choose a new distribution name and update `pyproject.toml` accordingly.
-
-Build and validate distributions:
-
-```bash
-python -m build
-python -m twine check dist/*
-```
-
-Recommended flow:
-
-1. Upload to TestPyPI first.
-2. Verify installation from TestPyPI.
-3. Upload the same version to PyPI.
-
-## Contributing
-
-Issues and pull requests are welcome. Keep changes small, include tests, and follow existing code style.

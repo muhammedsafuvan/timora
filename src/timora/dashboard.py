@@ -11,6 +11,8 @@ from rich.text import Text
 from timora.interval import format_interval
 from timora.notifier import VoiceNotifier
 from timora.scheduler import ClockSchedule, IntervalSchedule, run_schedule
+from timora.theme import ThemeSelection, list_presets, resolve_theme
+from timora.config import ThemeConfig, save_theme_config
 from timora.ui_helpers import (
     format_countdown_clock,
     format_countdown_short,
@@ -58,7 +60,11 @@ _BLOCK_GLYPHS = {
 
 class TimoraDashboard(App):
     CSS_PATH = "timora.tcss"
-    BINDINGS = [("q", "quit", "Quit"), ("p", "toggle_pause", "Pause/Resume")]
+    BINDINGS = [
+        ("q", "quit", "Quit"),
+        ("p", "toggle_pause", "Pause/Resume"),
+        ("c", "cycle_theme", "Cycle theme"),
+    ]
 
     is_paused = reactive(False)
     clock_text = reactive(Text(""))
@@ -79,17 +85,39 @@ class TimoraDashboard(App):
         interval_seconds: int,
         mode: str,
         notifier: VoiceNotifier,
+        theme_selection: ThemeSelection | None = None,
+        config_notice: str | None = None,
     ) -> None:
         super().__init__()
         self._interval_seconds = interval_seconds
         self._mode = mode
         self._notifier = notifier
+        self._theme_selection = theme_selection or resolve_theme(
+            preset_name=None,
+            primary_hex=None,
+            secondary_hex=None,
+        )
+        self._theme = self._theme_selection.theme
+        self._presets = list_presets()
+        self._preset_index = self._resolve_preset_index(self._theme_selection.name)
+        self._config_notice = config_notice
         self._history = AnnouncementHistory(limit=5)
         self._stop_event = threading.Event()
         self._scheduler_thread: threading.Thread | None = None
         self._schedule = self._create_schedule()
         self._paused_remaining: float | None = None
         self._paused_at_mono: float | None = None
+
+    def get_theme_variable_defaults(self) -> dict[str, str]:
+        return {
+            "accent": "#8fe3c4",
+            "secondary": "#a9b8b0",
+            "background": "#0b100e",
+            "surface_border": "#22302a",
+            "track": "#2b3a37",
+            "muted": "#7f8f87",
+            "text": "#ffffff",
+        }
 
     def _create_schedule(self) -> IntervalSchedule | ClockSchedule:
         if self._mode == "clock":
@@ -124,9 +152,12 @@ class TimoraDashboard(App):
                 with Vertical(id="announcements-block"):
                     yield Static("RECENT ANNOUNCEMENTS", id="announcements-title")
                     yield Static("No announcements yet.", id="announcements")
-            yield Static("Press q to quit, p to pause/resume", id="footer")
+            yield Static("Press q to quit, p to pause/resume, c to change theme", id="footer")
 
     def on_mount(self) -> None:
+        self._apply_theme(self._theme_selection, notify=False)
+        if self._config_notice:
+            self.notify(self._config_notice)
         self.set_interval(1.0, self._tick)
         self._start_scheduler()
         interval_label = format_interval(self._interval_seconds)
@@ -226,9 +257,13 @@ class TimoraDashboard(App):
         if paused:
             status.update("● PAUSED")
             status.add_class("paused")
+            status.styles.color = self._theme.muted
+            status.styles.border = ("round", self._theme.muted)
         else:
             status.update("● ACTIVE")
             status.remove_class("paused")
+            status.styles.color = self._theme.accent
+            status.styles.border = ("round", self._theme.accent)
 
     def watch_clock_text(self, value: Text) -> None:
         self.query_one("#clock", Static).update(value)
@@ -263,6 +298,57 @@ class TimoraDashboard(App):
     def watch_announcements_text(self, value: str) -> None:
         self.query_one("#announcements", Static).update(value)
 
+    def action_cycle_theme(self) -> None:
+        self._preset_index = (self._preset_index + 1) % len(self._presets)
+        preset = self._presets[self._preset_index]
+        selection = resolve_theme(preset_name=preset.name, primary_hex=None, secondary_hex=None)
+        self._apply_theme(selection)
+        self._persist_theme(selection)
+
+    def _persist_theme(self, selection: ThemeSelection) -> None:
+        save_theme_config(ThemeConfig(preset=selection.name))
+
+    def _resolve_preset_index(self, name: str) -> int:
+        for idx, preset in enumerate(self._presets):
+            if preset.name == name:
+                return idx
+        return 0
+
+    def _apply_theme(self, selection: ThemeSelection, *, notify: bool = True) -> None:
+        self._theme_selection = selection
+        self._theme = selection.theme
+        self.stylesheet.set_variables(
+            {
+                "accent": self._theme.accent,
+                "secondary": self._theme.secondary,
+                "background": self._theme.background,
+                "surface_border": self._theme.surface_border,
+                "track": self._theme.track,
+                "muted": self._theme.muted,
+                "text": self._theme.text,
+            }
+        )
+        self.refresh_css()
+        self._apply_accent_overrides()
+        self.clock_text = self._render_block_time(datetime.now().astimezone())
+        self.progress_bar = self._render_progress_bar(self.progress_percent)
+        if notify:
+            self.notify(f"Theme: {selection.name}")
+
+    def _apply_accent_overrides(self) -> None:
+        accent = self._theme.accent
+        for selector in ("#date", "#countdown", "#announcements"):
+            widget = self.query_one(selector, Static)
+            widget.styles.color = accent
+        self.query_one("#next-time", Static).styles.color = self._theme.text
+        if self.is_paused:
+            status_color = self._theme.muted
+        else:
+            status_color = accent
+        status = self.query_one("#status", Static)
+        status.styles.color = status_color
+        status.styles.border = ("round", status_color)
+
     def _render_block_time(self, now: datetime) -> Text:
         time_text = now.strftime("%I:%M:%S")
         period = now.strftime("%p")
@@ -279,9 +365,9 @@ class TimoraDashboard(App):
 
         text = Text()
         for idx, row in enumerate(rows):
-            text.append(row, style="bold #ffffff")
+            text.append(row, style=f"bold {self._theme.text}")
             if idx == 4:
-                text.append(f" {period}", style="bold #8fe3c4")
+                text.append(f" {period}", style=f"bold {self._theme.accent}")
             if idx < 4:
                 text.append("\n")
         return text
@@ -299,12 +385,17 @@ class TimoraDashboard(App):
         base_width = max(1, usable // blocks)
         remainder = max(0, usable - base_width * blocks)
         filled_blocks = max(0, min(blocks, round(percent / 100 * blocks)))
+        idle_color = "#3a3f3d"
+        use_theme = filled_blocks > 0
 
         text = Text()
         for row in range(2):
             for idx in range(blocks):
                 block_width = base_width + (1 if idx < remainder else 0)
-                style = "#8fe3c4" if idx < filled_blocks else "#2b3a37"
+                if use_theme and idx < filled_blocks:
+                    style = self._theme.accent
+                else:
+                    style = idle_color
                 text.append("█" * block_width, style=style)
                 if idx < blocks - 1:
                     text.append(" ")
@@ -343,9 +434,17 @@ def run_dashboard(
     interval_seconds: int,
     mode: str,
     notifier: VoiceNotifier,
+    theme_selection: ThemeSelection | None = None,
+    config_notice: str | None = None,
 ) -> int:
     if App is None:
         raise RuntimeError(str(_TEXTUAL_IMPORT_ERROR))
-    app = TimoraDashboard(interval_seconds=interval_seconds, mode=mode, notifier=notifier)
+    app = TimoraDashboard(
+        interval_seconds=interval_seconds,
+        mode=mode,
+        notifier=notifier,
+        theme_selection=theme_selection,
+        config_notice=config_notice,
+    )
     app.run()
     return 0
